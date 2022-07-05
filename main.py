@@ -1,6 +1,4 @@
-import datetime
 import os
-import random
 import sqlite3
 import urllib.request
 
@@ -76,7 +74,7 @@ def main():
         if len(results) == 4:
             markup = types.InlineKeyboardMarkup(row_width=1)
             btns = [types.InlineKeyboardButton(text=f'Назад', callback_data=f'back_to_cat'),
-                    types.InlineKeyboardButton(text=f'Купить', callback_data=f'back_to_cat')]
+                    types.InlineKeyboardButton(text=f'Купить', callback_data=f'add_to_basket')]
             markup.add(*btns)
 
             string = f'{results[0]}\n\nЦена: {results[1]} рублей\n{results[2]}'
@@ -85,6 +83,23 @@ def main():
             img = open('images/photo.png', 'rb')
 
             return string, img, markup
+
+
+    def search_in_basket(user):
+        conn = sqlite3.connect('db/date_base.db')
+        cursor = conn.cursor()
+        try:
+            cursor.execute(f'SELECT * FROM users WHERE user_id="{user}"')
+            results = cursor.fetchall()[0]
+        except:
+            sql = f"""insert into users(user_id, basket) values({user}, None);"""
+        cursor.execute(f'SELECT * FROM users WHERE user_id="{user}"')
+
+        print(cursor.fetchall())
+        results = cursor.fetchall()[0]
+
+        return results[1]
+
 
 
     @bot.message_handler(commands=['start'])  # /start главная страница бота
@@ -104,6 +119,7 @@ def main():
                          reply_markup=markup)
 
 
+
     @bot.message_handler(content_types=['text'])
     def get_text_messages(message):
         global flag1, flag2, flag3
@@ -112,15 +128,19 @@ def main():
             bot.send_message(message.chat.id, 'Выберите категорию товара', reply_markup=categories())
 
         if message.text == "🛒 Корзина" or message.text.lower() == "корзина":
-            pass
+            user_id = message.from_user.id
+            print(search_in_basket(user_id))
+
 
         if message.text == "Оформить заказ  ➡" or message.text.lower() == "оформить заказ":
             pass
 
         if message.text == "💬 Помощь" or message.text.lower() == "помощь":
-            bot.send_message(message.chat.id,
-                             'При возникновении проблем при работе данного telegram-бота обращаться по контактным данным:'
-                             '\nTelegram: @insaf \nПочта: insaf@gmail.com \nТелефон: 2-31-54')
+            bot.send_message(message.chat.id, 'При возникновении проблем при работе данного telegram-бота '
+                                              'обращаться по контактным данным:\nTelegram: @insaf'
+                                              '\nПочта: insaf@gmail.com \nТелефон: 2-31-54')
+
+
 
     @bot.callback_query_handler(func=lambda call: True)
     def handler_call(call):
@@ -142,15 +162,17 @@ def main():
 
         if call.data in all_tov_id:
             string, img, markup = card_info(call.data)
-            print(markup)
+            bot.delete_message(chat_id, message_id)
             bot.send_photo(chat_id, photo=img, caption=string, reply_markup=markup)
-
             try:
                 img.close()
-
                 os.remove('images/photo.png')
             except:
                 print('Фото не удалено!')
+
+        if call.data == 'add_to_basket':
+            bot.delete_message(chat_id, message_id)
+            bot.send_message(chat_id, 'Нахуй иди! Не продам)')
 
     bot.polling(none_stop=True)
 
