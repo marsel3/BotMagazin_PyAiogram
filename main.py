@@ -62,7 +62,7 @@ def main():
         results = cursor.fetchall()
         markup = types.InlineKeyboardMarkup(row_width=1)
         btns = [types.InlineKeyboardButton(text=f'{i[1]} \t{i[2]} рублей', callback_data=f'{i[0]}') for i in results]
-        markup.add(*btns)
+        markup.add(*btns, types.InlineKeyboardButton(text=f'Назад', callback_data=f'back_to_cat'))
 
         return markup
 
@@ -72,18 +72,17 @@ def main():
         cursor = conn.cursor()
         cursor.execute(f'SELECT name_tov, price_tov, disc_tov, photo_tov FROM tovars WHERE tovar_id="{id}"')
         results = cursor.fetchall()[0]
-        print(results)
+
         if len(results) == 4:
             markup = types.InlineKeyboardMarkup(row_width=1)
             btns = [types.InlineKeyboardButton(text=f'Назад', callback_data=f'back_to_cat'),
-                    types.InlineKeyboardButton(text=f'Купить', callback_data=f'')]
+                    types.InlineKeyboardButton(text=f'Купить', callback_data=f'back_to_cat')]
             markup.add(*btns)
 
             string = f'{results[0]}\n\nЦена: {results[1]} рублей\n{results[2]}'
             # img = open(f"images/{results[3]}", "rb").close()
             urllib.request.urlretrieve(f"{results[3]}", "images/photo.png")
             img = open('images/photo.png', 'rb')
-
 
             return string, img, markup
 
@@ -103,6 +102,7 @@ def main():
                          reply_markup=markup)
         bot.send_message(message.chat.id, 'Чтобы посмотреть каталог товаров нажмите на кнопку "Категории"',
                          reply_markup=markup)
+
 
     @bot.message_handler(content_types=['text'])
     def get_text_messages(message):
@@ -130,7 +130,8 @@ def main():
         user_id = call.message.chat.id
 
         if call.data == 'back_to_cat':
-            bot.send_message(message_id, 'Выберите категорию товара', reply_markup=categories())
+            bot.delete_message(chat_id, message_id)
+            bot.send_message(chat_id, 'Выберите категорию товара', reply_markup=categories())
 
         if call.data in category_list():
             bot.edit_message_text(
@@ -141,10 +142,12 @@ def main():
 
         if call.data in all_tov_id:
             string, img, markup = card_info(call.data)
-            print()
+            print(markup)
             bot.send_photo(chat_id, photo=img, caption=string, reply_markup=markup)
+
             try:
                 img.close()
+
                 os.remove('images/photo.png')
             except:
                 print('Фото не удалено!')
