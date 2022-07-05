@@ -86,20 +86,26 @@ def main():
 
 
     def search_in_basket(user):
-        conn = sqlite3.connect('db/date_base.db')
+        conn = sqlite3.connect('db/users.db')
         cursor = conn.cursor()
-        try:
-            cursor.execute(f'SELECT * FROM users WHERE user_id="{user}"')
-            results = cursor.fetchall()[0]
-        except:
-            sql = f"""insert into users(user_id, basket) values({user}, None);"""
-        cursor.execute(f'SELECT * FROM users WHERE user_id="{user}"')
+        cursor.execute(f"""CREATE TABLE IF NOT EXISTS "{user}"(tov_id text, name_tov text, price_tov text)""")
 
-        print(cursor.fetchall())
-        results = cursor.fetchall()[0]
+        cursor.execute(f'SELECT * FROM "{user}"')
+        results = cursor.fetchall()
 
-        return results[1]
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        markup.add(types.InlineKeyboardButton(text=f'Оформить заказ', callback_data=f'arrange'))
 
+        string = 'Корзина:\n'
+        summ = 0
+        if len(results) > 0:
+            for i in results:
+                string += f"\n{i[1]} \t{i[2]} рублей"
+                summ += int(i[2])
+            string += '\n________________' + '_' * len(str(summ))
+        string += f'\nИтого: {summ} рублей'
+
+        return string, markup
 
 
     @bot.message_handler(commands=['start'])  # /start главная страница бота
@@ -129,7 +135,8 @@ def main():
 
         if message.text == "🛒 Корзина" or message.text.lower() == "корзина":
             user_id = message.from_user.id
-            print(search_in_basket(user_id))
+            text, markup = search_in_basket(user_id)
+            bot.send_message(message.chat.id, text, reply_markup=markup)
 
 
         if message.text == "Оформить заказ  ➡" or message.text.lower() == "оформить заказ":
@@ -172,7 +179,11 @@ def main():
 
         if call.data == 'add_to_basket':
             bot.delete_message(chat_id, message_id)
-            bot.send_message(chat_id, 'Нахуй иди! Не продам)')
+            bot.send_message(chat_id, 'Нахуй иди! Не продаётся)')
+
+        if call.data == 'arrange':
+            bot.delete_message(chat_id, message_id)
+            bot.send_message(chat_id, 'Нахуй иди! Не продаётся)')
 
     bot.polling(none_stop=True)
 
