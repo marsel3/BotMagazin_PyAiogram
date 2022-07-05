@@ -61,7 +61,8 @@ def main():
         cursor.execute(f'SELECT tovar_id, name_tov, price_tov FROM tovars WHERE cat_id="{category}"')
         results = cursor.fetchall()
         markup = types.InlineKeyboardMarkup(row_width=1)
-        btns = [types.InlineKeyboardButton(text=f'{i[1]} \t{i[2]} рублей', callback_data=f'{i[0]}') for i in results]
+        btns = [types.InlineKeyboardButton(text=f'{i[1]} \t{i[2]} рублей', callback_data=f'{i[0]}'),
+                types.InlineKeyboardButton(text='Назад', callback_data='')]
         markup.add(*btns)
 
         return markup
@@ -74,13 +75,17 @@ def main():
         results = cursor.fetchall()[0]
         print(results[0])
         if len(results) == 4:
+            markup = types.InlineKeyboardMarkup(row_width=1)
+            btns = [types.InlineKeyboardButton(text=f'Купить', callback_data=f'{i[0]}') for i in
+                    results]
+            markup.add(*btns)
 
             string = f'{results[0]}\n\nЦена: {results[1]} рублей\n{results[2]}'
             #img = open(f"images/{results[3]}", "rb").close()
             urllib.request.urlretrieve(f"{results[3]}",  "images/photo.png")
 
             img = open('images/photo.png', 'rb')
-            return string, img
+            return string, img, markup
 
 
 
@@ -139,7 +144,7 @@ def main():
 
         if call.data in all_tov_id:
             string, img, markup = card_info(call.data)
-            bot.send_photo(chat_id, photo=img, caption=string)
+            bot.send_photo(chat_id, photo=img, caption=string, reply_markup=markup)
             try:
                 img.close()
                 os.remove('images/photo.png')
