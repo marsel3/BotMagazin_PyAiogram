@@ -1,6 +1,4 @@
-import os
 import sqlite3
-import urllib.request
 
 from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
@@ -143,11 +141,6 @@ async def answer(call: types.CallbackQuery):
             await bot.delete_message(chat_id, message_id)
             await bot.send_photo(chat_id, photo=img, caption=string, reply_markup=markup)
 
-            img.close()
-            try:
-                os.remove('images/photo.png')
-            except:
-                print('Фото не удалено!')
 
     if call.data == 'add_to_basket':
         add_to_basket(user_id, tovar_id, number)
@@ -240,14 +233,8 @@ def card_info(id):  # Выводит инфу по карточке товара
         markup.add(InlineKeyboardButton(text=f'Назад', callback_data=f'back_to_cat'))
 
         string = ''
-        try:
-            urllib.request.urlretrieve(f"{results[3]}", "images/photo.png")
-            img = open('images/photo.png', 'rb')
+        img = results[3]
 
-        except:
-            print(f"Фото {results[0]} не загружено!")
-            img = open('images/error.jpg', 'rb')
-            string = 'Соощите администратору, что произошла ошибка с загрузкой фото!\n\n\n'
 
         string += f'{results[0]}\n\nЦена: {results[1]} рублей\n{results[2]}'
 
