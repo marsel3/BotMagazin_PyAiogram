@@ -6,11 +6,10 @@ from aiogram import Bot, types
 from aiogram.dispatcher import Dispatcher
 from aiogram.utils import executor
 
-from aiogram.types import ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
 
-def all_tovar_id():  # Список всех товаров по id
-
+def all_tovar_id():     # Список всех товаров по id
     conn = sqlite3.connect('db/date_base.db')
     cursor = conn.cursor()
     cursor.execute('SELECT tovar_id FROM tovars')
@@ -20,15 +19,13 @@ def all_tovar_id():  # Список всех товаров по id
     return [str(i[0]) for i in results]
 
 
-
 bot = Bot(token="1672438859:AAFjoueNYWY2ZwUM1UqNIBC_USPJ2N4hE48")
 dp = Dispatcher(bot)
 
 number = 1
-tovar_id = ''
+tovar_id = ''   # Хранение текущего товара
 delFlag = False
-all_tov_id = all_tovar_id()
-
+all_tov_id = all_tovar_id()     # Список всех товаров по id
 
 
 @dp.message_handler(commands=['start'])
@@ -76,9 +73,11 @@ async def echo_message(message: types.Message):
 
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('edit_'))
 async def process_callback_kb1btn1(call: types.CallbackQuery):
-    global number
+    global number, tovar_id
 
     code = call.data[5:]
+
+    tovar_id = code
     chat_id = call.message.chat.id
     message_id = call.message.message_id
     user_id = call.message.chat.id
@@ -131,7 +130,7 @@ async def answer(call: types.CallbackQuery):
     if call.data in all_tov_id:
         if delFlag:
             delFlag = False
-            edit_basket(user_id, call.data)
+            del_cat_basket(user_id, call.data)
 
             markup = types.InlineKeyboardMarkup(row_width=1)
             markup.add(types.InlineKeyboardButton(text=f'Оформить заказ', callback_data=f'arrange'),
@@ -193,12 +192,10 @@ async def answer(call: types.CallbackQuery):
         await bot.send_message(chat_id, text, reply_markup=markup)
 
 
-
-
-
 # Функции
 
-def category():  # Выводит кнопки из таблицы category текст=название
+
+def category():     # Выводит кнопки из таблицы category текст=название
     conn = sqlite3.connect('db/date_base.db')
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM category')
@@ -212,9 +209,7 @@ def category():  # Выводит кнопки из таблицы category те
     return markup
 
 
-
-
-def category_list():  # Список всех категорий по
+def category_list():  # Список всех категорий из БД
     conn = sqlite3.connect('db/date_base.db')
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM category')
@@ -268,13 +263,10 @@ def card_info(id):  # Выводит инфу по карточке
         return string, img, markup
 
 
-
 def create_user_bd(user):
     conn = sqlite3.connect('db/users.db')
     cursor = conn.cursor()
-    cursor.execute(
-        f"""CREATE TABLE IF NOT EXISTS "{user}" (tov_id text, name_tov text, price_tov text, count_tov text)""")
-
+    cursor.execute(f'CREATE TABLE IF NOT EXISTS "{user}" (tov_id text, name_tov text, price_tov text, count_tov text)')
 
 
 def search_in_basket(user, string):
@@ -285,7 +277,6 @@ def search_in_basket(user, string):
     cursor.execute(f'SELECT * FROM "{user}"')
     results = cursor.fetchall()
     conn.close()
-    print(results)
     markup = types.InlineKeyboardMarkup(resize_button=True)
     for i in results:
         btns = [InlineKeyboardButton(text=f'{i[1]}', callback_data=f'{i[0]}'),
@@ -308,7 +299,7 @@ def search_in_basket(user, string):
     return string, markup
 
 
-def add_to_basket(user, tov_id, count):  # Добавление в БД юзера
+def add_to_basket(user, tov_id, count):  # Добавление, перезапись в БД юзера товары
     create_user_bd(user)
 
     conn = sqlite3.connect('db/date_base.db')
@@ -317,7 +308,6 @@ def add_to_basket(user, tov_id, count):  # Добавление в БД юзер
     cursor.execute(f'SELECT tovar_id, name_tov, price_tov FROM tovars WHERE tovar_id="{tov_id}"')
     results = cursor.fetchall()[0]
     conn.close()
-
 
     conn = sqlite3.connect('db/users.db')
     cursor = conn.cursor()
@@ -332,33 +322,8 @@ def add_to_basket(user, tov_id, count):  # Добавление в БД юзер
     conn.close()
 
 
-def basket_inputs(user):
-    create_user_bd(user)
 
-    conn = sqlite3.connect('db/users.db')
-    cursor = conn.cursor()
-    cursor.execute(f'SELECT * FROM "{user}"')
-    results = cursor.fetchall()
-    conn.close()
-
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    btns = [types.InlineKeyboardButton(text=f'{i[1]}', callback_data=f'{i[0]}') for i in results]
-    markup.add(*btns)
-
-    return markup
-
-
-def edit_basket(user, tov_id):
-    create_user_bd(user)
-
-    conn = sqlite3.connect('db/users.db')
-    cursor = conn.cursor()
-    cursor.execute(f'DELETE from "{user}" where tov_id = "{tov_id}"')
-    conn.commit()
-    conn.close()
-
-
-def del_cat_basket(user, tov_id):
+def del_cat_basket(user, tov_id):   # Удаляет строку товаров по id
     conn = sqlite3.connect('db/users.db')
     cursor = conn.cursor()
     cursor.execute(f'DELETE FROM "{user}" WHERE tov_id="{tov_id}"')
@@ -366,8 +331,7 @@ def del_cat_basket(user, tov_id):
     conn.close()
 
 
-
-def edit_confirm(user, number, tov_id):
+def edit_confirm(user, number, tov_id):  # Сохраняет увеличение или уменьшение количества товаров
     if number == 0:
         del_cat_basket(user, tov_id)
     else:
@@ -376,8 +340,6 @@ def edit_confirm(user, number, tov_id):
         cursor.execute(f'UPDATE "{user}" SET count_tov="{number}" WHERE tov_id="{tov_id}"')
         conn.commit()
         conn.close()
-
-
 
 
 if __name__ == '__main__':
