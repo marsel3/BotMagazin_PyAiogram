@@ -5,6 +5,7 @@ from aiogram.dispatcher import Dispatcher
 from aiogram.utils import executor
 
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from pyqiwip2p import QiwiP2P
 
 
 def all_tovar_id():     # Список всех товаров по id
@@ -54,12 +55,9 @@ async def echo_message(message: types.Message):
         await bot.send_message(message.chat.id, text, reply_markup=markup)
 
     if message.text == "Оформить заказ  ➡" or message.text.lower() == "оформить заказ":
-        inline_kb_full = InlineKeyboardMarkup(row_width=3)
-        btns = [InlineKeyboardButton('➖', callback_data='minus'),
-                InlineKeyboardButton(f'{number}', callback_data='call_number'),
-                InlineKeyboardButton('➕', callback_data='plus')]
-        inline_kb_full.add(*btns)
-        await message.reply("Первая инлайн кнопка", reply_markup=inline_kb_full)
+        string = pay_(message.from_user.id)
+        await bot.send_message(message.from_user.id, string)
+
 
     if message.text == "💬 Помощь" or message.text.lower() == "помощь":
         await bot.send_message(message.chat.id, 'При возникновении проблем при работе данного telegram-бота '
@@ -156,8 +154,10 @@ async def answer(call: types.CallbackQuery):
         print('Товар добавлен в корзину!')
 
     if call.data == 'arrange':  # Офтормить заказ
-        await bot.edit_message_text(chat_id, message_id,
-                                    'Нахуй иди! Не продаётся)')
+        string = pay_(user_id)
+        await bot.delete_message(chat_id, message_id)
+        await bot.send_message(chat_id, string)
+
 
     if call.data == 'minus':
         if number > 0:
@@ -322,6 +322,34 @@ def edit_confirm(user, number, tov_id):  # Сохраняет увеличени
         cursor.execute(f'UPDATE "{user}" SET count_tov="{number}" WHERE tov_id="{tov_id}"')
         conn.commit()
         conn.close()
+
+
+def pay_(user):  # Оплата
+    create_user_bd(user)
+
+    conn = sqlite3.connect('db/users.db')
+    cursor = conn.cursor()
+
+    cursor.execute(f'SELECT price_tov, count_tov FROM "{user}"')
+    results = cursor.fetchall()
+    conn.close()
+
+    summ = 0
+    lifetime = 15  # Форма будет жить 15 минут
+    comment = 'Купить арбуз'  # Комментарий
+
+    for i in results:
+        summ += int(i[0]) * int(i[1])
+
+    p2p = QiwiP2P(
+        auth_key="eyJ2ZXJzaW9uIjoiUDJQIiwiZGF0YSI6eyJwYXlpbl9tZXJjaGFudF9zaXRlX3VpZCI6Img5YW5wdy0wMCIsInVzZXJfaWQiOiI3OTUwNTM5NTMwNiIsInNlY3JldCI6ImQ5ZTE5ODhiODViNjM4ZmFlZGIyNTUyMmM3N2M2ZGQ3M2FlZjBmMTgyZGMxZDJhYzhhMTcwMTk0MjI3ZmUyMGUifX0=")
+
+    bill = p2p.bill(amount=summ, lifetime=lifetime, comment=comment)  # Выставление счета
+    string = f'Сумма: {summ} рублей\nСсылка живет: {lifetime} минут\nСсылка:\n{bill.pay_url}'  # Отправляем ссылку человеку
+
+    return string
+
+
 
 
 if __name__ == '__main__':
