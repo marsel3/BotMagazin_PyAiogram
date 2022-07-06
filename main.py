@@ -5,6 +5,8 @@ import urllib.request
 from telebot import types
 import telebot
 
+tovar_id = ''
+delFlag = False
 
 
 def all_tovar_id():  # Список всех товаров по id
@@ -25,29 +27,25 @@ def main():
     TOKEN = "1672438859:AAFjoueNYWY2ZwUM1UqNIBC_USPJ2N4hE48"
     bot = telebot.TeleBot(TOKEN)
     all_tov_id = all_tovar_id()
-    tovar_id = ''
 
 
 
     def categories():    # Выводит кнопки из таблицы category текст=название
-        category = types.InlineKeyboardMarkup(row_width=1)
-
         conn = sqlite3.connect('db/date_base.db')
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM category')
         results = cursor.fetchall()
         conn.close()
 
+        markup = types.InlineKeyboardMarkup(row_width=1)
         btns = [types.InlineKeyboardButton(text=f'{i[1]}', callback_data=f'{i[0]}') for i in results]
-        category.add(*btns)
+        markup.add(*btns)
 
-        return category
+        return markup
 
 
 
     def category_list():    #Список всех категорий по
-        category = types.InlineKeyboardMarkup(row_width=1)
-
         conn = sqlite3.connect('db/date_base.db')
         cursor = conn.cursor()
         cursor.execute('SELECT * FROM category')
@@ -99,7 +97,7 @@ def main():
 
 
 
-    def search_in_basket(user): # Создание таблицы юзер или вывод по данным
+    def search_in_basket(user, string): # Создание таблицы юзер или вывод по данным
         conn = sqlite3.connect('db/users.db')
         cursor = conn.cursor()
         cursor.execute(f"""CREATE TABLE IF NOT EXISTS "{user}"(tov_id text, name_tov text, price_tov text)""")
@@ -112,12 +110,13 @@ def main():
         markup.add(types.InlineKeyboardButton(text=f'Оформить заказ', callback_data=f'arrange'),
                    types.InlineKeyboardButton(text=f'Изменить корзину', callback_data=f'edit_basket'))
 
-        string = 'Корзина:\n'
         summ = 0
+        count = 1
         if len(results) > 0:
             for i in results:
-                string += f"\n{i[1]} \t{i[2]} рублей"
+                string += f"\n{count}. {i[1]} \t{i[2]} рублей"
                 summ += int(i[2])
+                count += 1
             string += '\n________________' + '_' * len(str(summ))
         string += f'\nИтого: {summ} рублей'
 
@@ -127,7 +126,6 @@ def main():
 
 
     def add_to_basket(user, tov_id): #Добавление в БД юзера
-
         conn = sqlite3.connect('db/date_base.db')
         cursor = conn.cursor()
         cursor.execute(f'SELECT tovar_id, name_tov, price_tov FROM tovars WHERE tovar_id="{tov_id}"')
@@ -137,6 +135,28 @@ def main():
         conn = sqlite3.connect('db/users.db')
         cursor = conn.cursor()
         cursor.execute(f'INSERT INTO "{user}" VALUES ("{results[0]}", "{results[1]}", "{results[2]}")')
+        conn.commit()
+        conn.close()
+
+
+    def basket_inputs(user):
+        conn = sqlite3.connect('db/users.db')
+        cursor = conn.cursor()
+        cursor.execute(f'SELECT tov_id, name_tov, price_tov FROM "{user}"')
+        results = cursor.fetchall()
+        conn.close()
+
+        markup = types.InlineKeyboardMarkup(row_width=1)
+        btns = [types.InlineKeyboardButton(text=f'{i[1]}', callback_data=f'{i[0]}') for i in results]
+        markup.add(*btns)
+
+        return markup
+
+
+    def edit_basket(user, tov_id):
+        conn = sqlite3.connect('db/users.db')
+        cursor = conn.cursor()
+        cursor.execute(f'DELETE from "{user}" where tov_id = "{tov_id}"')
         conn.commit()
         conn.close()
 
@@ -169,7 +189,7 @@ def main():
 
         if message.text == "🛒 Корзина" or message.text.lower() == "корзина":
             user_id = message.from_user.id
-            text, markup = search_in_basket(user_id)
+            text, markup = search_in_basket(user_id, 'Корзина:\n')
             bot.send_message(message.chat.id, text, reply_markup=markup)
 
 
@@ -185,7 +205,7 @@ def main():
 
     @bot.callback_query_handler(func=lambda call: True)
     def handler_call(call):
-        global tovar_id
+        global tovar_id, delFlag
 
         chat_id = call.message.chat.id
         message_id = call.message.message_id
@@ -203,15 +223,28 @@ def main():
                 reply_markup=tov_in_category(call.data))
 
         if call.data in all_tov_id:
-            string, img, markup = card_info(call.data)
-            tovar_id = call.data
-            bot.delete_message(chat_id, message_id)
-            bot.send_photo(chat_id, photo=img, caption=string, reply_markup=markup)
-            img.close()
-            try:
-                os.remove('images/photo.png')
-            except:
-                print('Фото не удалено!')
+            if delFlag:
+                delFlag = False
+                edit_basket(user_id, call.data)
+
+                markup = types.InlineKeyboardMarkup(row_width=1)
+                markup.add(types.InlineKeyboardButton(text=f'Оформить заказ', callback_data=f'arrange'),
+                           types.InlineKeyboardButton(text=f'Изменить корзину', callback_data=f'edit_basket'))
+
+                bot.delete_message(chat_id, message_id)
+                bot.send_message(chat_id, search_in_basket(user_id, 'Корзина:\n')[0],
+                                 reply_markup=markup)
+            else:
+                string, img, markup = card_info(call.data)
+                tovar_id = call.data
+
+                bot.delete_message(chat_id, message_id)
+                bot.send_photo(chat_id, photo=img, caption=string, reply_markup=markup)
+                img.close()
+                try:
+                    os.remove('images/photo.png')
+                except:
+                    print('Фото не удалено!')
 
 
         if call.data == 'add_to_basket':
@@ -225,8 +258,11 @@ def main():
             bot.send_message(chat_id, 'Нахуй иди! Не продаётся)')
 
         if call.data == 'edit_basket':
+            delFlag = True
             bot.delete_message(chat_id, message_id)
-            bot.send_message(chat_id, 'Нахуй иди! Не продаётся)')
+            bot.send_message(chat_id, search_in_basket(user_id, 'Какой товар удалить из корзины?\n')[0],
+                             reply_markup=basket_inputs(user_id))
+
 
     bot.polling(none_stop=True)
 
