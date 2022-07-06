@@ -105,8 +105,6 @@ async def process_callback_kb1btn1(call: types.CallbackQuery):
     await bot.send_message(chat_id, string, reply_markup=markup)
 
 
-
-
 @dp.callback_query_handler(lambda c: c.data)
 # async def answer(call: types.CallbackQuery, message: types.Message):
 async def answer(call: types.CallbackQuery):
@@ -119,7 +117,6 @@ async def answer(call: types.CallbackQuery):
     if call.data == 'back_to_cat':
         await bot.delete_message(chat_id, message_id)
         await bot.send_message(chat_id, 'Выберите категорию товара',  reply_markup=category())
-
 
     if call.data in category_list():
         number = 1
@@ -143,7 +140,6 @@ async def answer(call: types.CallbackQuery):
             string, img, markup = card_info(call.data)
             tovar_id = call.data
 
-
             await bot.delete_message(chat_id, message_id)
             await bot.send_photo(chat_id, photo=img, caption=string, reply_markup=markup)
 
@@ -153,7 +149,6 @@ async def answer(call: types.CallbackQuery):
             except:
                 print('Фото не удалено!')
 
-
     if call.data == 'add_to_basket':
         add_to_basket(user_id, tovar_id, number)
         await bot.delete_message(chat_id, message_id)
@@ -161,12 +156,9 @@ async def answer(call: types.CallbackQuery):
         number = 1
         print('Товар добавлен в корзину!')
 
-
     if call.data == 'arrange':  # Офтормить заказ
         await bot.edit_message_text(chat_id, message_id,
                                     'Нахуй иди! Не продаётся)')
-
-
 
     if call.data == 'minus':
         if number > 0:
@@ -184,7 +176,6 @@ async def answer(call: types.CallbackQuery):
 
         text, markup = search_in_basket(user_id, 'Корзина:\n')
         await bot.send_message(chat_id, text, reply_markup=markup)
-
 
     if call.data == 'del_cat_basket':
         del_cat_basket(user_id, tovar_id)
@@ -231,7 +222,7 @@ def tov_in_category(category):  # Выводит товары в кнопки п
     return markup
 
 
-def card_info(id):  # Выводит инфу по карточке
+def card_info(id):  # Выводит инфу по карточке товара
     global number
     conn = sqlite3.connect('db/date_base.db')
     cursor = conn.cursor()
@@ -263,13 +254,13 @@ def card_info(id):  # Выводит инфу по карточке
         return string, img, markup
 
 
-def create_user_bd(user):
+def create_user_bd(user):   # Cоздаёт БД с id юзера, для корзины
     conn = sqlite3.connect('db/users.db')
     cursor = conn.cursor()
     cursor.execute(f'CREATE TABLE IF NOT EXISTS "{user}" (tov_id text, name_tov text, price_tov text, count_tov text)')
 
 
-def search_in_basket(user, string):
+def search_in_basket(user, string):     # Выводит корзину
     create_user_bd(user)
 
     conn = sqlite3.connect('db/users.db')
@@ -280,8 +271,8 @@ def search_in_basket(user, string):
     markup = types.InlineKeyboardMarkup(resize_button=True)
     for i in results:
         btns = [InlineKeyboardButton(text=f'{i[1]}', callback_data=f'{i[0]}'),
-              InlineKeyboardButton(text=f'{i[3]} шт.', callback_data=f'edit_{i[0]}'),
-              InlineKeyboardButton(text=f'✏', callback_data=f'edit_{i[0]}')]
+                InlineKeyboardButton(text=f'{i[3]} шт.', callback_data=f'edit_{i[0]}'),
+                InlineKeyboardButton(text=f'✏', callback_data=f'edit_{i[0]}')]
         markup.add(*btns)
 
     markup.add(InlineKeyboardButton(text=f'Оформить заказ', callback_data=f'arrange'))
@@ -320,7 +311,6 @@ def add_to_basket(user, tov_id, count):  # Добавление, перезап�
     cursor.execute(f'INSERT INTO "{user}" VALUES ("{results[0]}", "{results[1]}", "{results[2]}", {count})')
     conn.commit()
     conn.close()
-
 
 
 def del_cat_basket(user, tov_id):   # Удаляет строку товаров по id
