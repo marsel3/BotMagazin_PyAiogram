@@ -96,12 +96,19 @@ def main():
             return string, img, markup
 
 
-
-    def search_in_basket(user, string): # Создание таблицы юзер или вывод по данным
+    def create_user_bd(user):
         conn = sqlite3.connect('db/users.db')
         cursor = conn.cursor()
         cursor.execute(f"""CREATE TABLE IF NOT EXISTS "{user}" (tov_id text, name_tov text, price_tov text)""")
 
+
+
+
+    def search_in_basket(user, string):
+        create_user_bd(user)
+
+        conn = sqlite3.connect('db/users.db')
+        cursor = conn.cursor()
         cursor.execute(f'SELECT * FROM "{user}"')
         results = cursor.fetchall()
         conn.close()
@@ -126,6 +133,8 @@ def main():
 
 
     def add_to_basket(user, tov_id): #Добавление в БД юзера
+        create_user_bd(user)
+
         conn = sqlite3.connect('db/date_base.db')
         cursor = conn.cursor()
         cursor.execute(f'SELECT tovar_id, name_tov, price_tov FROM tovars WHERE tovar_id="{tov_id}"')
@@ -140,6 +149,8 @@ def main():
 
 
     def basket_inputs(user):
+        create_user_bd(user)
+
         conn = sqlite3.connect('db/users.db')
         cursor = conn.cursor()
         cursor.execute(f'SELECT tov_id, name_tov, price_tov FROM "{user}"')
@@ -154,6 +165,8 @@ def main():
 
 
     def edit_basket(user, tov_id):
+        create_user_bd(user)
+
         conn = sqlite3.connect('db/users.db')
         cursor = conn.cursor()
         cursor.execute(f'DELETE from "{user}" where tov_id = "{tov_id}"')
