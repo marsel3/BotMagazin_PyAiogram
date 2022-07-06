@@ -222,6 +222,7 @@ def main():
                 text='Выберите нужный товар',
                 reply_markup=tov_in_category(call.data))
 
+
         if call.data in all_tov_id:
             if delFlag:
                 delFlag = False
@@ -256,6 +257,7 @@ def main():
         if call.data == 'arrange':  # Офтормить заказ
             bot.delete_message(chat_id, message_id)
             bot.send_message(chat_id, 'Нахуй иди! Не продаётся)')
+
 
         if call.data == 'edit_basket':
             delFlag = True
