@@ -100,7 +100,7 @@ def main():
     def search_in_basket(user, string): # Создание таблицы юзер или вывод по данным
         conn = sqlite3.connect('db/users.db')
         cursor = conn.cursor()
-        cursor.execute(f"""CREATE TABLE IF NOT EXISTS "{user}"(tov_id text, name_tov text, price_tov text)""")
+        cursor.execute(f"""CREATE TABLE IF NOT EXISTS "{user}" (tov_id text, name_tov text, price_tov text)""")
 
         cursor.execute(f'SELECT * FROM "{user}"')
         results = cursor.fetchall()
