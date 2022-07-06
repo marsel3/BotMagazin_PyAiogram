@@ -68,7 +68,6 @@ async def echo_message(message: types.Message):
 
 
 
-
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('edit_'))
 async def process_callback_kb1btn1(call: types.CallbackQuery):
     global number, tovar_id
@@ -135,11 +134,18 @@ async def answer(call: types.CallbackQuery):
                                         search_in_basket(user_id, 'Корзина:\n')[0],
                                         reply_markup=markup)
         else:
-            string, img, markup = card_info(call.data)
-            tovar_id = call.data
-
-            await bot.delete_message(chat_id, message_id)
-            await bot.send_photo(chat_id, photo=img, caption=string, reply_markup=markup)
+            try:
+                string, img, markup = card_info(call.data)
+                tovar_id = call.data
+                try:
+                    await bot.delete_message(chat_id, message_id)
+                except:
+                    string = "Ошибка удаления сообщений, сообщите администратору!\n\n\n" + string
+                await bot.send_photo(chat_id, photo=img, caption=string, reply_markup=markup)
+            except:
+                string, markup = card_info(call.data)[0], card_info(call.data)[2]
+                string = 'Ошибка отправки карточки, сообщите администратору!\n\n\n' + string
+                await bot.send_message(chat_id, string, reply_markup=markup)
 
 
     if call.data == 'add_to_basket':
@@ -234,7 +240,6 @@ def card_info(id):  # Выводит инфу по карточке товара
 
         string = ''
         img = results[3]
-
 
         string += f'{results[0]}\n\nЦена: {results[1]} рублей\n{results[2]}'
 
