@@ -6,6 +6,7 @@ from telebot import types
 import telebot
 
 tovar_id = ''
+number = 1
 delFlag = False
 
 
@@ -71,19 +72,23 @@ def main():
 
 
     def card_info(id):  # Выводит инфу по карточке
+        global number
         conn = sqlite3.connect('db/date_base.db')
         cursor = conn.cursor()
         cursor.execute(f'SELECT name_tov, price_tov, disc_tov, photo_tov FROM tovars WHERE tovar_id="{id}"')
         results = cursor.fetchall()[0]
 
         if len(results) == 4:
-            markup = types.InlineKeyboardMarkup(row_width=1)
-            btns = [types.InlineKeyboardButton(text=f'Купить', callback_data=f'add_to_basket'),
-                    types.InlineKeyboardButton(text=f'Назад', callback_data=f'back_to_cat')]
+            markup = types.InlineKeyboardMarkup()
+            btns = [types.InlineKeyboardButton(text=f'➖', callback_data=f'minus'),
+                    types.InlineKeyboardButton(text=f'{number}', callback_data=f'add_to_basket'),
+                    types.InlineKeyboardButton(text=f'➕', callback_data=f'plus')]
             markup.add(*btns)
+            markup.add(types.InlineKeyboardButton(text=f'Купить', callback_data=f'add_to_basket'))
+            markup.add(types.InlineKeyboardButton(text=f'Назад', callback_data=f'back_to_cat'))
+
             string = ''
             try:
-                # img = open(f"images/{results[3]}", "rb").close()
                 urllib.request.urlretrieve(f"{results[3]}", "images/photo.png")
                 img = open('images/photo.png', 'rb')
             except:
@@ -99,8 +104,7 @@ def main():
     def create_user_bd(user):
         conn = sqlite3.connect('db/users.db')
         cursor = conn.cursor()
-        cursor.execute(f"""CREATE TABLE IF NOT EXISTS "{user}" (tov_id text, name_tov text, price_tov text)""")
-
+        cursor.execute(f"""CREATE TABLE IF NOT EXISTS "{user}" (tov_id text, name_tov text, price_tov text, count_tov text)""")
 
 
 
@@ -143,7 +147,7 @@ def main():
 
         conn = sqlite3.connect('db/users.db')
         cursor = conn.cursor()
-        cursor.execute(f'INSERT INTO "{user}" VALUES ("{results[0]}", "{results[1]}", "{results[2]}")')
+        cursor.execute(f'INSERT INTO "{user}" VALUES ("{results[0]}", "{results[1]}", "{results[2]}", 1)')
         conn.commit()
         conn.close()
 
@@ -153,7 +157,7 @@ def main():
 
         conn = sqlite3.connect('db/users.db')
         cursor = conn.cursor()
-        cursor.execute(f'SELECT tov_id, name_tov, price_tov FROM "{user}"')
+        cursor.execute(f'SELECT * FROM "{user}"')
         results = cursor.fetchall()
         conn.close()
 
@@ -218,7 +222,7 @@ def main():
 
     @bot.callback_query_handler(func=lambda call: True)
     def handler_call(call):
-        global tovar_id, delFlag
+        global tovar_id, delFlag, number
 
         chat_id = call.message.chat.id
         message_id = call.message.message_id
@@ -277,6 +281,13 @@ def main():
             bot.delete_message(chat_id, message_id)
             bot.send_message(chat_id, search_in_basket(user_id, 'Какой товар удалить из корзины?\n')[0],
                              reply_markup=basket_inputs(user_id))
+
+        if call.data == 'minus':
+            if number > 1:
+                number -= 1
+
+        if call.data == 'plus':
+            number += 1
 
 
     bot.polling(none_stop=True)
